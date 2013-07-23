@@ -7,7 +7,7 @@
  * @license http://www.opensource.org/licenses/mit-license.php The MIT License
  */
 
-class CImageHandler extends CApplicationComponent
+class ImageHandler
 {
 	private $originalImage = null;
 	private $image = null;
@@ -79,7 +79,7 @@ class CImageHandler extends CApplicationComponent
 		{
 			imagedestroy($this->image);
 		}
-		
+
 		if($this->originalImage !== null)
 		{
 			if(is_resource($this->originalImage['image']))
@@ -154,23 +154,23 @@ class CImageHandler extends CApplicationComponent
 
 
 	}
-	
+
 	protected function initImage($image = false)
 	{
 		if($image === false)
 		{
 			$image = $this->originalImage;
 		}
-		
+
 		$this->width = $image['width'];
 		$this->height = $image['height'];
 		$this->mimeType = $image['mimeType'];
 		$this->format = $image['format'];
-		
+
 		//Image
 		if(is_resource($this->image))
 			imagedestroy($this->image);
-		
+
 		$this->image = imagecreatetruecolor($this->width, $this->height);
 		$this->preserveTransparency($this->image);
 		imagecopy($this->image, $image['image'], 0, 0, 0, 0, $this->width, $this->height);
@@ -227,7 +227,7 @@ class CImageHandler extends CApplicationComponent
 					$this->transparencyColor[2],
 					0
     			);
-				
+
 				imagefill($newImage, 0, 0, $color);
     			imagesavealpha($newImage, true);
 				break;
@@ -237,7 +237,7 @@ class CImageHandler extends CApplicationComponent
 	public function resize($toWidth, $toHeight, $proportional = true)
 	{
 		$this->checkLoaded();
-		
+
 		$toWidth = $toWidth !== false ? $toWidth : $this->width;
 		$toHeight = $toHeight !== false ? $toHeight : $this->height;
 
@@ -245,8 +245,8 @@ class CImageHandler extends CApplicationComponent
 		{
 			$newHeight = $toHeight;
 			$newWidth = round($newHeight / $this->height * $this->width);
-			
-			
+
+
 			if($newWidth > $toWidth)
 			{
 				$newWidth = $toWidth;
@@ -283,7 +283,7 @@ class CImageHandler extends CApplicationComponent
 
 		if($toWidth !== false)
 			$toWidth = min($toWidth, $this->width);
-		
+
 		if($toHeight !== false)
 			$toHeight = min($toHeight, $this->height);
 
@@ -304,7 +304,7 @@ class CImageHandler extends CApplicationComponent
 
 			$posX = 0;
 			$posY = 0;
-                        
+
 			$watermarkWidth = $wImg['width'];
 			$watermarkHeight = $wImg['height'];
 
@@ -359,7 +359,7 @@ class CImageHandler extends CApplicationComponent
 				case self::CORNER_RIGHT_CENTER:
 					$posX = $this->width - $watermarkWidth - $offsetX;
 					$posY = floor(($this->height - $watermarkHeight) / 2);
-					break;					
+					break;
 				default:
 					throw new Exception('Invalid $corner value');
 			}
@@ -525,7 +525,7 @@ class CImageHandler extends CApplicationComponent
 			case self::CORNER_RIGHT_CENTER:
 				$posX = $this->width - $textWidth - $offsetX;
 				$posY = floor(($this->height - $textHeight) / 2);
-				break;				
+				break;
 			default:
 				throw new Exception('Invalid $corner value');
 		}
@@ -533,8 +533,8 @@ class CImageHandler extends CApplicationComponent
 		if($alpha > 0)
 		{
 			$color =  imagecolorallocatealpha($this->image, $color[0], $color[1], $color[2], $alpha);
-		} 
-		else 
+		}
+		else
 		{
 			$color = imagecolorallocate($this->image, $color[0], $color[1], $color[2]);
 		}
@@ -610,7 +610,7 @@ class CImageHandler extends CApplicationComponent
 
 		return $this;
 	}
-	
+
 	public function grayscale()
 	{
 		$newImage = imagecreatetruecolor($this->width, $this->height);
@@ -619,9 +619,9 @@ class CImageHandler extends CApplicationComponent
 		imagecopymergegray($newImage, $newImage, 0, 0, 0, 0, $this->width, $this->height, 0);
 
 		imagedestroy($this->image);
-		
+
 		$this->image = $newImage;
-		
+
 		return $this;
 	}
 
