@@ -1,5 +1,5 @@
 {
-    "name": "mrs2000/image",
+    "name": "mrssoft/yii2-image",
     "version": "1.0.0",
     "description": "Image handler",
     "type": "yii2-extension",
