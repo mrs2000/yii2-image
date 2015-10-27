@@ -102,10 +102,10 @@ class ImageHandler extends \yii\base\Component
 	{
 		$file_name = realpath($file_name);
 
-		$im = new Imagick();
+		$im = new \Imagick();
 		try {
 			$im->pingImage($file_name);
-		} catch (ImagickException $e) {
+		} catch (\ImagickException $e) {
 			throw new Exception('Invalid or corrupted image file, please try uploading another image.');
 		}
 
@@ -132,7 +132,7 @@ class ImageHandler extends \yii\base\Component
 
 				$im->writeImage();
 			}
-			catch (ImagickException $e)
+			catch (\ImagickException $e)
 			{
 				header('HTTP/1.1 500 Internal Server Error');
 				throw new Exception('An error occured reszing the image.');
