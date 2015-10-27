@@ -97,6 +97,51 @@ class ImageHandler extends \yii\base\Component
             throw new Exception('Load image first');
         }
     }
+	
+	public function resizeLarge($file_name, $maxSize = 2000)
+	{
+		$file_name = realpath($file_name);
+
+		$im = new Imagick();
+		try {
+			$im->pingImage($file_name);
+		} catch (ImagickException $e) {
+			throw new Exception('Invalid or corrupted image file, please try uploading another image.');
+		}
+
+		$width  = $im->getImageWidth();
+		$height = $im->getImageHeight();
+		if ($width > $maxSize || $height > $maxSize)
+		{
+			try {
+
+				$fitbyWidth = ($maxSize / $width) > ($maxSize / $height);
+				$aspectRatio = $height / $width;
+				if ($fitbyWidth) {
+					$im->setSize($maxSize, abs($width * $aspectRatio));
+				} else {
+					$im->setSize(abs($height / $aspectRatio), $maxSize);
+				}
+				$im->readImage($file_name);
+
+				if ($fitbyWidth) {
+					$im->thumbnailImage($maxSize, 0, false);
+				} else {
+					$im->thumbnailImage(0, $maxSize, false);
+				}
+
+				$im->writeImage();
+			}
+			catch (ImagickException $e)
+			{
+				header('HTTP/1.1 500 Internal Server Error');
+				throw new Exception('An error occured reszing the image.');
+			}
+		}
+
+		$im->destroy();
+	}
+	
 
     /**
      * @param $file
@@ -106,6 +151,8 @@ class ImageHandler extends \yii\base\Component
     private function loadImage($file)
     {
         $result = [];
+		
+		$this->resizeLarge($file);
 
         if ($imageInfo = @getimagesize($file))
         {
@@ -596,7 +643,7 @@ class ImageHandler extends \yii\base\Component
                 imagepng($this->image);
                 break;
             default:
-                throw new Exception('Invalid image format for putput');
+                throw new Exception('Invalid image format for output');
         }
 
         return $this;
