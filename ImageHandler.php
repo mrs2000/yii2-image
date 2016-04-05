@@ -100,6 +100,10 @@ class ImageHandler extends \yii\base\Component
 	
 	public function resizeLarge($file_name, $maxSize = 2000)
 	{
+        if (!extension_loaded('imagick')) {
+            return;
+        }
+
 		$file_name = realpath($file_name);
 
 		$im = new \Imagick();
@@ -141,7 +145,25 @@ class ImageHandler extends \yii\base\Component
 
 		$im->destroy();
 	}
-	
+
+    /**
+     * @param $filename
+     * @param array $params ['-progressive', '-copy none', '-optimize']
+     * @return bool
+     */
+    public function optimize($filename, array $params = ['-copy none', '-optimize'])
+    {
+        $programm = 'jpegtran';
+        if (stripos(PHP_OS, 'WIN') === 0) {
+            $programm = 'C:\jpegtran\jpegtran.exe';
+        }
+
+        $strParams = implode(' ', $params);
+        $cmd = "$programm $strParams -outfile $filename $filename";
+        @exec($cmd, $output, $ret);
+
+        return $ret == 0;
+    }
 
     /**
      * @param $file
