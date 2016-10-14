@@ -22,10 +22,6 @@ class OptimizePng extends \yii\base\Component
             $this->token = Yii::$app->params['OptimizeWebToken'];
         }
 
-        if (empty($this->token)) {
-            throw new InvalidParamException('Token is empty.');
-        }
-
         parent::init();
     }
 
@@ -35,6 +31,10 @@ class OptimizePng extends \yii\base\Component
      */
     public function run($filename)
     {
+        if (empty($this->token)) {
+            return false;
+        }
+        
         $content = file_get_contents($filename);
         if ($content === false) {
             return false;
