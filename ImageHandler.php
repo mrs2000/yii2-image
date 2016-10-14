@@ -1,19 +1,20 @@
 <?php
+
 namespace mrssoft\image;
 
 use yii\base\Exception;
 
 /**
  * Image handler
- * @author Yaroslav Pelesh aka Tokolist http://tokolist.com
- * @link https://github.com/tokolist/yii-components
- * @version 1.2
- * @license http://www.opensource.org/licenses/mit-license.php The MIT License
+ * 
+ * @author Melnikov R.S.
+ * 
+ * Based on CImageHandler from https://github.com/tokolist/yii-components
  */
 class ImageHandler extends \yii\base\Component
 {
-    private $originalImage = null;
-    private $image = null;
+    private $originalImage;
+    private $image;
 
     private $format = 0;
 
@@ -42,22 +43,33 @@ class ImageHandler extends \yii\base\Component
     const FLIP_VERTICAL = 2;
     const FLIP_BOTH = 3;
 
-
+    /**
+     * @return resource
+     */
     public function getImage()
     {
         return $this->image;
     }
 
+    /**
+     * @return int
+     */
     public function getFormat()
     {
         return $this->format;
     }
 
+    /**
+     * @return int
+     */
     public function getWidth()
     {
         return $this->width;
     }
 
+    /**
+     * @return int
+     */
     public function getHeight()
     {
         return $this->height;
@@ -75,15 +87,12 @@ class ImageHandler extends \yii\base\Component
 
     private function freeImage()
     {
-        if (is_resource($this->image))
-        {
+        if (is_resource($this->image)) {
             imagedestroy($this->image);
         }
 
-        if ($this->originalImage !== null)
-        {
-            if (is_resource($this->originalImage['image']))
-            {
+        if ($this->originalImage !== null) {
+            if (is_resource($this->originalImage['image'])) {
                 imagedestroy($this->originalImage['image']);
             }
             $this->originalImage = null;
@@ -92,135 +101,128 @@ class ImageHandler extends \yii\base\Component
 
     private function checkLoaded()
     {
-        if (!is_resource($this->image))
-        {
-            throw new Exception('Load image first');
+        if (!is_resource($this->image)) {
+            throw new Exception('Load image first.');
         }
     }
-	
-	public function resizeLarge($file_name, $maxSize = 2000)
-	{
+
+    /**
+     * Resize very large image with Imagick
+     * @param $file_name
+     * @param int $maxSize
+     * @throws \yii\base\Exception
+     */
+    public function resizeLarge($file_name, $maxSize = 2000)
+    {
         if (!extension_loaded('imagick')) {
             return;
         }
 
-		$file_name = realpath($file_name);
+        $file_name = realpath($file_name);
 
-		$im = new \Imagick();
-		try {
-			$im->pingImage($file_name);
-		} catch (\ImagickException $e) {
-			throw new Exception('Invalid or corrupted image file, please try uploading another image.');
-		}
-
-		$width  = $im->getImageWidth();
-		$height = $im->getImageHeight();
-		if ($width > $maxSize || $height > $maxSize)
-		{
-			try {
-
-				$fitbyWidth = ($maxSize / $width) > ($maxSize / $height);
-				$aspectRatio = $height / $width;
-				if ($fitbyWidth) {
-					$im->setSize($maxSize, abs($width * $aspectRatio));
-				} else {
-					$im->setSize(abs($height / $aspectRatio), $maxSize);
-				}
-				$im->readImage($file_name);
-
-				if ($fitbyWidth) {
-					$im->thumbnailImage($maxSize, 0, false);
-				} else {
-					$im->thumbnailImage(0, $maxSize, false);
-				}
-
-				$im->writeImage();
-			}
-			catch (\ImagickException $e)
-			{
-				header('HTTP/1.1 500 Internal Server Error');
-				throw new Exception('An error occured reszing the image.');
-			}
-		}
-
-		$im->destroy();
-	}
-
-    /**
-     * @param $filename
-     * @param array $params ['-progressive', '-copy none', '-optimize']
-     * @return bool
-     */
-    public function optimize($filename, array $params = ['-copy none', '-optimize'])
-    {
-        $programm = 'jpegtran';
-        if (stripos(PHP_OS, 'WIN') === 0) {
-            $programm = 'C:\jpegtran\jpegtran.exe';
+        $im = new \Imagick();
+        try {
+            $im->pingImage($file_name);
+        } catch (\ImagickException $e) {
+            throw new Exception('Invalid or corrupted image file, please try uploading another image.');
         }
 
-        $strParams = implode(' ', $params);
-        $cmd = "$programm $strParams -outfile $filename $filename";
-        @exec($cmd, $output, $ret);
+        $width = $im->getImageWidth();
+        $height = $im->getImageHeight();
+        if ($width > $maxSize || $height > $maxSize) {
+            try {
 
-        return $ret == 0;
+                $fitbyWidth = ($maxSize / $width) > ($maxSize / $height);
+                $aspectRatio = $height / $width;
+                if ($fitbyWidth) {
+                    $im->setSize($maxSize, abs($width * $aspectRatio));
+                } else {
+                    $im->setSize(abs($height / $aspectRatio), $maxSize);
+                }
+                $im->readImage($file_name);
+
+                if ($fitbyWidth) {
+                    $im->thumbnailImage($maxSize, 0, false);
+                } else {
+                    $im->thumbnailImage(0, $maxSize, false);
+                }
+
+                $im->writeImage();
+            } catch (\ImagickException $e) {
+                header('HTTP/1.1 500 Internal Server Error');
+                throw new Exception('An error occured reszing the image.');
+            }
+        }
+
+        $im->destroy();
     }
 
     /**
-     * @param $file
+     * Optimize file
+     * @param string $filename
+     * @param array $params ['-progressive', '-copy none', '-optimize']
+     * @return bool
+     */
+    public function optimize($filename = null, array $params = ['-copy none', '-optimize'])
+    {
+        if ($filename === null) {
+            $filename = $this->fileName;
+            $params = $this->width > 200 || $this->height > 200 ?
+                ['-progressive', '-copy none', '-optimize'] :
+                ['-copy none', '-optimize']; 
+        }
+        
+        if (pathinfo($filename, PATHINFO_EXTENSION) == 'png') {
+            $optimizer = new OptimizePng();
+            return $optimizer->run($filename);
+        } else {
+            $optimizer = new OptimizeJpg();
+            return $optimizer->run($filename, $params);
+        }
+    }
+
+    /**
+     * @param string $file
      * @return array|null
      * @throws Exception
      */
     private function loadImage($file)
     {
         $result = [];
-		
-		$this->resizeLarge($file);
 
-        if ($imageInfo = @getimagesize($file))
-        {
-            $result['width'] = $imageInfo[0];
-            $result['height'] = $imageInfo[1];
+        $this->resizeLarge($file);
+
+        if ($imageInfo = @getimagesize($file)) {
+            list($result['width'], $result['height']) = $imageInfo;
 
             $result['mimeType'] = $imageInfo['mime'];
 
-            switch ($result['format'] = $imageInfo[2])
-            {
+            switch ($result['format'] = $imageInfo[2]) {
                 case self::IMG_GIF:
-                    if ($result['image'] = imagecreatefromgif($file))
-                    {
+                    if ($result['image'] = imagecreatefromgif($file)) {
                         return $result;
-                    }
-                    else
-                    {
+                    } else {
                         throw new Exception('Invalid image gif format');
                     }
                     break;
                 case self::IMG_JPEG:
-                    if ($result['image'] = imagecreatefromjpeg($file))
-                    {
+                    if ($result['image'] = imagecreatefromjpeg($file)) {
                         return $result;
-                    }
-                    else
-                    {
+                    } else {
                         throw new Exception('Invalid image jpeg format');
                     }
                     break;
                 case self::IMG_PNG:
-                    if ($result['image'] = imagecreatefrompng($file))
-                    {
+                    if ($result['image'] = imagecreatefrompng($file)) {
                         return $result;
-                    }
-                    else
-                    {
+                    } else {
                         throw new Exception('Invalid image png format');
                     }
                     break;
                 default:
                     throw new Exception('Not supported image format');
             }
-        }
-        else
-        {
+        } else {
             throw new Exception('Invalid image file');
         }
 
@@ -228,8 +230,7 @@ class ImageHandler extends \yii\base\Component
 
     protected function initImage($image = false)
     {
-        if ($image === false)
-        {
+        if ($image === false) {
             $image = $this->originalImage;
         }
 
@@ -239,8 +240,7 @@ class ImageHandler extends \yii\base\Component
         $this->format = $image['format'];
 
         //Image
-        if (is_resource($this->image))
-        {
+        if (is_resource($this->image)) {
             imagedestroy($this->image);
         }
 
@@ -249,24 +249,30 @@ class ImageHandler extends \yii\base\Component
         imagecopy($this->image, $image['image'], 0, 0, 0, 0, $this->width, $this->height);
     }
 
+    /**
+     * @param string $file
+     * @return $this|bool
+     * @throws \yii\base\Exception
+     */
     public function load($file)
     {
         $this->freeImage();
 
-        if (($this->originalImage = $this->loadImage($file)))
-        {
+        if ($this->originalImage = $this->loadImage($file)) {
             $this->initImage();
             $this->fileName = $file;
 
 
             return $this;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }
 
+    /**
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function reload()
     {
         $this->checkLoaded();
@@ -277,8 +283,7 @@ class ImageHandler extends \yii\base\Component
 
     private function preserveTransparency($newImage)
     {
-        switch ($this->format)
-        {
+        switch ($this->format) {
             case self::IMG_GIF:
                 $color = imagecolorallocate($newImage, $this->transparencyColor[0], $this->transparencyColor[1], $this->transparencyColor[2]);
 
@@ -296,6 +301,13 @@ class ImageHandler extends \yii\base\Component
         }
     }
 
+    /**
+     * @param $toWidth
+     * @param $toHeight
+     * @param bool $proportional
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function resize($toWidth, $toHeight, $proportional = true)
     {
         $this->checkLoaded();
@@ -303,20 +315,16 @@ class ImageHandler extends \yii\base\Component
         $toWidth = $toWidth !== false ? $toWidth : $this->width;
         $toHeight = $toHeight !== false ? $toHeight : $this->height;
 
-        if ($proportional)
-        {
+        if ($proportional) {
             $newHeight = $toHeight;
             $newWidth = round($newHeight / $this->height * $this->width);
 
 
-            if ($newWidth > $toWidth)
-            {
+            if ($newWidth > $toWidth) {
                 $newWidth = $toWidth;
                 $newHeight = round($newWidth / $this->width * $this->height);
             }
-        }
-        else
-        {
+        } else {
             $newWidth = $toWidth;
             $newHeight = $toHeight;
         }
@@ -338,17 +346,22 @@ class ImageHandler extends \yii\base\Component
 
     }
 
+    /**
+     * @param $toWidth
+     * @param $toHeight
+     * @param bool $proportional
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function thumb($toWidth, $toHeight, $proportional = true)
     {
         $this->checkLoaded();
 
-        if ($toWidth !== false)
-        {
+        if ($toWidth !== false) {
             $toWidth = min($toWidth, $this->width);
         }
 
-        if ($toHeight !== false)
-        {
+        if ($toHeight !== false) {
             $toHeight = min($toHeight, $this->height);
         }
 
@@ -356,36 +369,39 @@ class ImageHandler extends \yii\base\Component
         $this->resize($toWidth, $toHeight, $proportional);
 
         return $this;
-
     }
 
+    /**
+     * @param $watermarkFile
+     * @param $offsetX
+     * @param $offsetY
+     * @param int $corner
+     * @param bool $zoom
+     * @return $this|bool
+     * @throws \yii\base\Exception
+     */
     public function watermark($watermarkFile, $offsetX, $offsetY, $corner = self::CORNER_RIGHT_BOTTOM, $zoom = false)
     {
-
         $this->checkLoaded();
 
-        if ($wImg = $this->loadImage($watermarkFile))
-        {
+        if ($wImg = $this->loadImage($watermarkFile)) {
 
             $watermarkWidth = $wImg['width'];
             $watermarkHeight = $wImg['height'];
 
-            if ($zoom !== false)
-            {
+            if ($zoom !== false) {
                 $dimension = round(max($this->width, $this->height) * $zoom);
 
                 $watermarkHeight = $dimension;
                 $watermarkWidth = round($watermarkHeight / $wImg['height'] * $wImg['width']);
 
-                if ($watermarkWidth > $dimension)
-                {
+                if ($watermarkWidth > $dimension) {
                     $watermarkWidth = $dimension;
                     $watermarkHeight = round($watermarkWidth / $wImg['width'] * $wImg['height']);
                 }
             }
 
-            switch ($corner)
-            {
+            switch ($corner) {
                 case self::CORNER_LEFT_TOP:
                     $posX = $offsetX;
                     $posY = $offsetY;
@@ -417,13 +433,15 @@ class ImageHandler extends \yii\base\Component
 
             return $this;
         }
-        else
-        {
-            return false;
-        }
+        
+        return false;
     }
 
-
+    /**
+     * @param $mode
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function flip($mode)
     {
         $this->checkLoaded();
@@ -433,8 +451,7 @@ class ImageHandler extends \yii\base\Component
         $srcWidth = $this->width;
         $srcHeight = $this->height;
 
-        switch ($mode)
-        {
+        switch ($mode) {
             case self::FLIP_HORIZONTAL:
                 $srcX = $this->width - 1;
                 $srcWidth = -$this->width;
@@ -467,6 +484,11 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
+    /**
+     * @param $degrees
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function rotate($degrees)
     {
         $this->checkLoaded();
@@ -480,6 +502,14 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
+    /**
+     * @param $width
+     * @param $height
+     * @param bool $startX
+     * @param bool $startY
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function crop($width, $height, $startX = false, $startY = false)
     {
         $this->checkLoaded();
@@ -488,8 +518,8 @@ class ImageHandler extends \yii\base\Component
         $height = (int)$height;
 
         //Centered crop
-        $startX = $startX === false ? floor(($this->width - $width) / 2) : intval($startX);
-        $startY = $startY === false ? floor(($this->height - $height) / 2) : intval($startY);
+        $startX = $startX === false ? floor(($this->width - $width) / 2) : (int)$startX;
+        $startY = $startY === false ? floor(($this->height - $height) / 2) : (int)$startY;
 
         //Check dimensions
         $startX = max(0, min($this->width, $startX));
@@ -513,11 +543,23 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
-    public function text($text, $fontFile, $size = 12, $color = [
-            0,
-            0,
-            0
-        ], $corner = self::CORNER_LEFT_TOP, $offsetX = 0, $offsetY = 0, $angle = 0)
+    /**
+     * @param $text
+     * @param $fontFile
+     * @param int $size
+     * @param array $color
+     * @param int $corner
+     * @param int $offsetX
+     * @param int $offsetY
+     * @param int $angle
+     * @return $this
+     * @throws \yii\base\Exception
+     */
+    public function text($text, $fontFile, $size = 12, array $color = [
+        0,
+        0,
+        0
+    ], $corner = self::CORNER_LEFT_TOP, $offsetX = 0, $offsetY = 0, $angle = 0)
     {
         $this->checkLoaded();
 
@@ -527,9 +569,7 @@ class ImageHandler extends \yii\base\Component
 
         $color = imagecolorallocate($this->image, $color[0], $color[1], $color[2]);
 
-
-        switch ($corner)
-        {
+        switch ($corner) {
             case self::CORNER_LEFT_TOP:
                 $posX = $offsetX;
                 $posY = $offsetY;
@@ -560,23 +600,26 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
+    /**
+     * @param $width
+     * @param $height
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function adaptiveThumb($width, $height)
     {
         $this->checkLoaded();
 
-        $width = intval($width);
-        $height = intval($height);
+        $width = (int)$width;
+        $height = (int)$height;
 
         $widthProportion = $width / $this->width;
         $heightProportion = $height / $this->height;
 
-        if ($widthProportion > $heightProportion)
-        {
+        if ($widthProportion > $heightProportion) {
             $newWidth = $width;
             $newHeight = round($newWidth / $this->width * $this->height);
-        }
-        else
-        {
+        } else {
             $newHeight = $height;
             $newWidth = round($newHeight / $this->height * $this->width);
         }
@@ -588,7 +631,14 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
-    public function resizeCanvas($toWidth, $toHeight, $backgroundColor = [255, 255, 255])
+    /**
+     * @param $toWidth
+     * @param $toHeight
+     * @param array $backgroundColor
+     * @return $this
+     * @throws \yii\base\Exception
+     */
+    public function resizeCanvas($toWidth, $toHeight, array $backgroundColor = [255, 255, 255])
     {
         $this->checkLoaded();
 
@@ -598,12 +648,9 @@ class ImageHandler extends \yii\base\Component
         $widthProportion = $newWidth / $this->width;
         $heightProportion = $newHeight / $this->height;
 
-        if ($widthProportion < $heightProportion)
-        {
+        if ($widthProportion < $heightProportion) {
             $newHeight = round($widthProportion * $this->height);
-        }
-        else
-        {
+        } else {
             $newWidth = round($heightProportion * $this->width);
         }
 
@@ -627,6 +674,9 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     public function grayscale()
     {
         $newImage = imagecreatetruecolor($this->width, $this->height);
@@ -641,17 +691,21 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
+    /**
+     * @param bool $inFormat
+     * @param int $jpegQuality
+     * @return $this
+     * @throws \yii\base\Exception
+     */
     public function show($inFormat = false, $jpegQuality = 75)
     {
         $this->checkLoaded();
 
-        if (!$inFormat)
-        {
+        if (!$inFormat) {
             $inFormat = $this->format;
         }
 
-        switch ($inFormat)
-        {
+        switch ($inFormat) {
             case self::IMG_GIF:
                 header('Content-type: image/gif');
                 imagegif($this->image);
@@ -671,47 +725,43 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
-    public function save($file = false, $toFormat = false, $jpegQuality = 75, $touch = false)
+    /**
+     * @param bool $file
+     * @param bool $toFormat
+     * @param int $jpegQuality
+     * @return $this
+     * @throws \yii\base\Exception
+     */
+    public function save($file = false, $toFormat = false, $jpegQuality = 75)
     {
-        if (empty($file))
-        {
+        if (empty($file)) {
             $file = $this->fileName;
         }
 
         $this->checkLoaded();
 
-        if (!$toFormat)
-        {
+        if (!$toFormat) {
             $toFormat = $this->format;
         }
 
-        switch ($toFormat)
-        {
+        switch ($toFormat) {
             case self::IMG_GIF:
-                if (!imagegif($this->image, $file))
-                {
+                if (!imagegif($this->image, $file)) {
                     throw new Exception('Can\'t save gif file');
                 }
                 break;
             case self::IMG_JPEG:
-                if (!imagejpeg($this->image, $file, $jpegQuality))
-                {
+                if (!imagejpeg($this->image, $file, $jpegQuality)) {
                     throw new Exception('Can\'t save jpeg file');
                 }
                 break;
             case self::IMG_PNG:
-                if (!imagepng($this->image, $file))
-                {
+                if (!imagepng($this->image, $file)) {
                     throw new Exception('Can\'t save png file');
                 }
                 break;
             default:
                 throw new Exception('Invalid image format for save');
-        }
-
-        if ($touch && $file != $this->fileName)
-        {
-            touch($file, filemtime($this->fileName));
         }
 
         return $this;
