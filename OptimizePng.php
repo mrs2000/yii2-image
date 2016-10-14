@@ -3,7 +3,6 @@
 namespace mrssoft\image;
 
 use yii;
-use yii\base\InvalidParamException;
 
 /**
  * Optimize PNG with service http://optimizeweb.ru/
@@ -19,7 +18,7 @@ class OptimizePng extends \yii\base\Component
     public function init()
     {
         if (empty($this->token)) {
-            $this->token = Yii::$app->params['OptimizeWebToken'];
+            $this->token = Yii::$app->params['optimizeWebToken'];
         }
 
         parent::init();
