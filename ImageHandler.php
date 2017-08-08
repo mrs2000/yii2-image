@@ -6,9 +6,9 @@ use yii\base\Exception;
 
 /**
  * Image handler
- * 
+ *
  * @author Melnikov R.S.
- * 
+ *
  * Based on CImageHandler from https://github.com/tokolist/yii-components
  */
 class ImageHandler extends \yii\base\Component
@@ -142,9 +142,9 @@ class ImageHandler extends \yii\base\Component
                 $im->readImage($file_name);
 
                 if ($fitbyWidth) {
-                    $im->thumbnailImage($maxSize, 0, false);
+                    $im->thumbnailImage($maxSize, 0);
                 } else {
-                    $im->thumbnailImage(0, $maxSize, false);
+                    $im->thumbnailImage(0, $maxSize);
                 }
 
                 $im->writeImage();
@@ -167,18 +167,18 @@ class ImageHandler extends \yii\base\Component
     {
         if ($filename === null) {
             $filename = $this->fileName;
-            $params = $this->width > 200 || $this->height > 200 ?
-                ['-progressive', '-copy none', '-optimize'] :
-                ['-copy none', '-optimize']; 
+            $params = $this->width > 200 || $this->height > 200 ? ['-progressive', '-copy none', '-optimize'] :
+                ['-copy none', '-optimize'];
         }
-        
-        if (pathinfo($filename, PATHINFO_EXTENSION) == 'png') {
-            $optimizer = new OptimizePng();
-            return $optimizer->run($filename);
-        } else {
-            $optimizer = new OptimizeJpg();
-            return $optimizer->run($filename, $params);
+
+        switch (pathinfo($filename, PATHINFO_EXTENSION)) {
+            case 'jpg':
+            case 'jpeg':
+                $optimizer = new OptimizeJpg();
+                return $optimizer->run($filename, $params);
         }
+
+        return true;
     }
 
     /**
@@ -201,23 +201,20 @@ class ImageHandler extends \yii\base\Component
                 case self::IMG_GIF:
                     if ($result['image'] = imagecreatefromgif($file)) {
                         return $result;
-                    } else {
-                        throw new Exception('Invalid image gif format');
                     }
+                    throw new Exception('Invalid image gif format');
                     break;
                 case self::IMG_JPEG:
                     if ($result['image'] = imagecreatefromjpeg($file)) {
                         return $result;
-                    } else {
-                        throw new Exception('Invalid image jpeg format');
                     }
+                    throw new Exception('Invalid image jpeg format');
                     break;
                 case self::IMG_PNG:
                     if ($result['image'] = imagecreatefrompng($file)) {
                         return $result;
-                    } else {
-                        throw new Exception('Invalid image png format');
                     }
+                    throw new Exception('Invalid image png format');
                     break;
                 default:
                     throw new Exception('Not supported image format');
@@ -261,12 +258,10 @@ class ImageHandler extends \yii\base\Component
         if ($this->originalImage = $this->loadImage($file)) {
             $this->initImage();
             $this->fileName = $file;
-
-
             return $this;
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
@@ -433,7 +428,7 @@ class ImageHandler extends \yii\base\Component
 
             return $this;
         }
-        
+
         return false;
     }
 
