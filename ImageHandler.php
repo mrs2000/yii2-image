@@ -27,21 +27,19 @@ class ImageHandler extends \yii\base\Component
 
     public $transparencyColor = [0, 0, 0];
 
+    public const IMG_GIF = 1;
+    public const IMG_JPEG = 2;
+    public const IMG_PNG = 3;
 
-    const IMG_GIF = 1;
-    const IMG_JPEG = 2;
-    const IMG_PNG = 3;
+    public const CORNER_LEFT_TOP = 1;
+    public const CORNER_RIGHT_TOP = 2;
+    public const CORNER_LEFT_BOTTOM = 3;
+    public const CORNER_RIGHT_BOTTOM = 4;
+    public const CORNER_CENTER = 5;
 
-    const CORNER_LEFT_TOP = 1;
-    const CORNER_RIGHT_TOP = 2;
-    const CORNER_LEFT_BOTTOM = 3;
-    const CORNER_RIGHT_BOTTOM = 4;
-    const CORNER_CENTER = 5;
-
-
-    const FLIP_HORIZONTAL = 1;
-    const FLIP_VERTICAL = 2;
-    const FLIP_BOTH = 3;
+    public const FLIP_HORIZONTAL = 1;
+    public const FLIP_VERTICAL = 2;
+    public const FLIP_BOTH = 3;
 
     /**
      * @return resource
@@ -111,8 +109,9 @@ class ImageHandler extends \yii\base\Component
      * @param $file_name
      * @param int $maxSize
      * @throws \yii\base\Exception
+     * @throws \ImagickException
      */
-    public function resizeLarge($file_name, $maxSize = 2000)
+    public function resizeLarge(string $file_name, int $maxSize = 2000)
     {
         if (!extension_loaded('imagick')) {
             return;
@@ -163,7 +162,7 @@ class ImageHandler extends \yii\base\Component
      * @param array $params ['-progressive', '-copy none', '-optimize']
      * @return bool
      */
-    public function optimize($filename = null, array $params = ['-copy none', '-optimize'])
+    public function optimize(string $filename = null, array $params = ['-copy none', '-optimize']): bool
     {
         if ($filename === null) {
             $filename = $this->fileName;
@@ -185,15 +184,16 @@ class ImageHandler extends \yii\base\Component
      * @param string $file
      * @return array|null
      * @throws Exception
+     * @throws \ImagickException
      */
-    private function loadImage($file)
+    private function loadImage(string $file)
     {
         $result = [];
 
         $this->resizeLarge($file);
 
         if ($imageInfo = @getimagesize($file)) {
-            list($result['width'], $result['height']) = $imageInfo;
+            [$result['width'], $result['height']] = $imageInfo;
 
             $result['mimeType'] = $imageInfo['mime'];
 
@@ -222,7 +222,6 @@ class ImageHandler extends \yii\base\Component
         } else {
             throw new Exception('Invalid image file');
         }
-
     }
 
     protected function initImage($image = false)
@@ -250,8 +249,9 @@ class ImageHandler extends \yii\base\Component
      * @param string $file
      * @return $this|bool
      * @throws \yii\base\Exception
+     * @throws \ImagickException
      */
-    public function load($file)
+    public function load(string $file): ?self
     {
         $this->freeImage();
 
@@ -261,14 +261,14 @@ class ImageHandler extends \yii\base\Component
             return $this;
         }
 
-        return false;
+        return null;
     }
 
     /**
      * @return $this
      * @throws \yii\base\Exception
      */
-    public function reload()
+    public function reload(): self
     {
         $this->checkLoaded();
         $this->initImage();
@@ -303,7 +303,7 @@ class ImageHandler extends \yii\base\Component
      * @return $this
      * @throws \yii\base\Exception
      */
-    public function resize($toWidth, $toHeight, $proportional = true)
+    public function resize($toWidth, $toHeight, $proportional = true): self
     {
         $this->checkLoaded();
 
@@ -338,7 +338,6 @@ class ImageHandler extends \yii\base\Component
         $this->height = $newHeight;
 
         return $this;
-
     }
 
     /**
@@ -348,7 +347,7 @@ class ImageHandler extends \yii\base\Component
      * @return $this
      * @throws \yii\base\Exception
      */
-    public function thumb($toWidth, $toHeight, $proportional = true)
+    public function thumb($toWidth, $toHeight, $proportional = true): self
     {
         $this->checkLoaded();
 
@@ -360,9 +359,80 @@ class ImageHandler extends \yii\base\Component
             $toHeight = min($toHeight, $this->height);
         }
 
-
         $this->resize($toWidth, $toHeight, $proportional);
 
+        return $this;
+    }
+
+    public function trimImage($color = 0xFFFFFF, int $border = 0): self
+    {
+        //find the size of the borders
+        $b_top = 0;
+        $b_btm = 0;
+        $b_lft = 0;
+        $b_rt = 0;
+
+        //top
+        for (; $b_top < $this->height; ++$b_top) {
+            for ($x = 0; $x < $this->width; ++$x) {
+                if (imagecolorat($this->image, $x, $b_top) != $color) {
+                    break 2;
+                }
+            }
+        }
+        //bottom
+        for (; $b_btm < $this->height; ++$b_btm) {
+            for ($x = 0; $x < $this->width; ++$x) {
+                if (imagecolorat($this->image, $x, $this->height - $b_btm - 1) != $color) {
+                    break 2;
+                }
+            }
+        }
+        //left
+        for (; $b_lft < $this->width; ++$b_lft) {
+            for ($y = 0; $y < $this->height; ++$y) {
+                if (imagecolorat($this->image, $b_lft, $y) != $color) {
+                    break 2;
+                }
+            }
+        }
+        //right
+        for (; $b_rt < $this->width; ++$b_rt) {
+            for ($y = 0; $y < $this->height; ++$y) {
+                if (imagecolorat($this->image, $this->width - $b_rt - 1, $y) != $color) {
+                    break 2;
+                }
+            }
+        }
+
+        if ($b_lft == 0 && $b_rt == 0 && $b_top == 0 && $b_btm == 0) {
+            return $this;
+        }
+
+        if ($border) {
+            if ($b_lft > $border) {
+                $b_lft -= $border;
+            }
+            if ($b_rt > $border) {
+                $b_rt -= $border;
+            }
+            if ($b_top > $border) {
+                $b_top -= $border;
+            }
+            if ($b_btm > $border) {
+                $b_btm -= $border;
+            }
+        }
+
+        //copy the contents, excluding the border
+        $newImage = imagecreatetruecolor($this->width - ($b_lft + $b_rt), $this->height - ($b_top + $b_btm));
+
+        $this->width = imagesx($newImage);
+        $this->height = imagesy($newImage);
+
+        imagecopy($newImage, $this->image, 0, 0, $b_lft, $b_top, $this->width, $this->height);
+
+        $this->image = $newImage;
         return $this;
     }
 
@@ -374,8 +444,9 @@ class ImageHandler extends \yii\base\Component
      * @param bool $zoom
      * @return $this|bool
      * @throws \yii\base\Exception
+     * @throws \ImagickException
      */
-    public function watermark($watermarkFile, $offsetX, $offsetY, $corner = self::CORNER_RIGHT_BOTTOM, $zoom = false)
+    public function watermark(string $watermarkFile, int $offsetX, int $offsetY, $corner = self::CORNER_RIGHT_BOTTOM, $zoom = false): ?self
     {
         $this->checkLoaded();
 
@@ -422,14 +493,12 @@ class ImageHandler extends \yii\base\Component
             }
 
             imagecopyresampled($this->image, $wImg['image'], $posX, $posY, 0, 0, $watermarkWidth, $watermarkHeight, $wImg['width'], $wImg['height']);
-
-
             imagedestroy($wImg['image']);
 
             return $this;
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -437,7 +506,7 @@ class ImageHandler extends \yii\base\Component
      * @return $this
      * @throws \yii\base\Exception
      */
-    public function flip($mode)
+    public function flip(int $mode): self
     {
         $this->checkLoaded();
 
@@ -484,7 +553,7 @@ class ImageHandler extends \yii\base\Component
      * @return $this
      * @throws \yii\base\Exception
      */
-    public function rotate($degrees)
+    public function rotate($degrees): self
     {
         $this->checkLoaded();
 

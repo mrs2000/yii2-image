@@ -6,8 +6,6 @@ use yii;
 
 /**
  * Optimize PNG with service http://optimizeweb.ru/
- * Class OptimizePng
- * @package mrssoft\image
  */
 class OptimizePng extends \yii\base\Component
 {
@@ -28,7 +26,7 @@ class OptimizePng extends \yii\base\Component
      * @param string $filename
      * @return bool
      */
-    public function run($filename)
+    public function run(string $filename): bool
     {
         if (empty($this->token)) {
             return false;

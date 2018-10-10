@@ -14,7 +14,7 @@ class OptimizeJpg extends \yii\base\Component
      * @param array $params ['-progressive', '-copy none', '-optimize']
      * @return bool
      */
-    public function run($filename, array $params = ['-copy none', '-optimize'])
+    public function run(string $filename, array $params = ['-copy none', '-optimize']): bool
     {
         $programm = 'jpegtran';
         if (stripos(PHP_OS, 'WIN') === 0) {
