@@ -364,7 +364,7 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
-    public function trimImage($color = 0xFFFFFF, int $border = 0): self
+    public function trimImage($color = 0xFFFFFF, int $border = 0, int $diff = 0): self
     {
         //find the size of the borders
         $b_top = 0;
@@ -372,10 +372,16 @@ class ImageHandler extends \yii\base\Component
         $b_lft = 0;
         $b_rt = 0;
 
+        $filterColor = [
+            ($color >> 16) & 0xFF,
+            ($color >> 8) & 0xFF,
+            $color & 0xFF
+        ];
+
         //top
         for (; $b_top < $this->height; ++$b_top) {
             for ($x = 0; $x < $this->width; ++$x) {
-                if (imagecolorat($this->image, $x, $b_top) != $color) {
+                if ($this->compareColors(imagecolorat($this->image, $x, $b_top), $filterColor, $diff) === false) {
                     break 2;
                 }
             }
@@ -383,7 +389,7 @@ class ImageHandler extends \yii\base\Component
         //bottom
         for (; $b_btm < $this->height; ++$b_btm) {
             for ($x = 0; $x < $this->width; ++$x) {
-                if (imagecolorat($this->image, $x, $this->height - $b_btm - 1) != $color) {
+                if ($this->compareColors(imagecolorat($this->image, $x, $this->height - $b_btm - 1), $filterColor, $diff) === false) {
                     break 2;
                 }
             }
@@ -391,7 +397,7 @@ class ImageHandler extends \yii\base\Component
         //left
         for (; $b_lft < $this->width; ++$b_lft) {
             for ($y = 0; $y < $this->height; ++$y) {
-                if (imagecolorat($this->image, $b_lft, $y) != $color) {
+                if ($this->compareColors(imagecolorat($this->image, $b_lft, $y), $filterColor, $diff) === false) {
                     break 2;
                 }
             }
@@ -399,7 +405,7 @@ class ImageHandler extends \yii\base\Component
         //right
         for (; $b_rt < $this->width; ++$b_rt) {
             for ($y = 0; $y < $this->height; ++$y) {
-                if (imagecolorat($this->image, $this->width - $b_rt - 1, $y) != $color) {
+                if ($this->compareColors(imagecolorat($this->image, $this->width - $b_rt - 1, $y), $filterColor, $diff) === false) {
                     break 2;
                 }
             }
@@ -409,19 +415,15 @@ class ImageHandler extends \yii\base\Component
             return $this;
         }
 
-        if ($border) {
-            if ($b_lft > $border) {
-                $b_lft -= $border;
-            }
-            if ($b_rt > $border) {
-                $b_rt -= $border;
-            }
-            if ($b_top > $border) {
-                $b_top -= $border;
-            }
-            if ($b_btm > $border) {
-                $b_btm -= $border;
-            }
+        if ($border > 0) {
+            $b_lft -= $border;
+            $b_rt -= $border;
+            $b_top -= $border;
+            $b_btm -= $border;
+            $b_lft = max($b_lft, 0);
+            $b_rt = max($b_rt, 0);
+            $b_top = max($b_top, 0);
+            $b_btm = max($b_btm, 0);
         }
 
         //copy the contents, excluding the border
@@ -434,6 +436,15 @@ class ImageHandler extends \yii\base\Component
 
         $this->image = $newImage;
         return $this;
+    }
+
+    private function compareColors(int $imageColor, array $filter = [255, 255, 255], int $diff = 0): bool
+    {
+        $r2 = ($imageColor >> 16) & 0xFF;
+        $g2 = ($imageColor >> 8) & 0xFF;
+        $b2 = $imageColor & 0xFF;
+
+        return abs($filter[0] - $r2) + abs($filter[1] - $g2) + abs($filter[2] - $b2) <= $diff;
     }
 
     /**
