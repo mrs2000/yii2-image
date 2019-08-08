@@ -157,6 +157,23 @@ class ImageHandler extends \yii\base\Component
     }
 
     /**
+     * Flatten image
+     * @return $this
+     */
+    public function flatten()
+    {
+        $newImage = imagecreatetruecolor($this->width, $this->height);
+        $white = imagecolorallocate($newImage, 255, 255, 255);
+        imagefill($newImage, 0, 0, $white);
+
+        imagecopyresampled($newImage, $this->image, 0, 0, 0, 0, $this->width, $this->height, $this->width, $this->height);
+
+        $this->format = self::IMG_JPEG;
+        $this->image = $newImage;
+        return $this;
+    }
+
+    /**
      * Optimize file
      * @param string $filename
      * @param array $params ['-progressive', '-copy none', '-optimize']
