@@ -138,18 +138,21 @@ class ImageHandler extends \yii\base\Component
                 } else {
                     $im->setSize(abs($height / $aspectRatio), $maxSize);
                 }
+
                 $im->readImage($file_name);
+                $im->setImageAlphaChannel(\Imagick::ALPHACHANNEL_FLATTEN);
+                $im->setImageBackgroundColor('white');
 
                 if ($fitbyWidth) {
-                    $im->thumbnailImage($maxSize, 0);
+                    $im->resizeImage($maxSize, 0, \Imagick::FILTER_LANCZOS, 1);
                 } else {
-                    $im->thumbnailImage(0, $maxSize);
+                    $im->resizeImage(0, $maxSize, \Imagick::FILTER_LANCZOS, 1);
                 }
 
                 $im->writeImage();
             } catch (\ImagickException $e) {
                 header('HTTP/1.1 500 Internal Server Error');
-                throw new Exception('An error occured reszing the image.');
+                throw new Exception('An error occured reszing the image. ' . $e->getMessage());
             }
         }
 
