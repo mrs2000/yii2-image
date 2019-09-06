@@ -140,13 +140,19 @@ class ImageHandler extends \yii\base\Component
                 }
 
                 $im->readImage($file_name);
-                $im->setImageAlphaChannel(\Imagick::ALPHACHANNEL_FLATTEN);
-                $im->setImageBackgroundColor('white');
 
-                if ($fitbyWidth) {
-                    $im->resizeImage($maxSize, 0, \Imagick::FILTER_LANCZOS, 1);
+                if (defined('\Imagick::ALPHACHANNEL_FLATTEN')) {
+                    $im->setImageAlphaChannel(\Imagick::ALPHACHANNEL_FLATTEN);
+                    $im->setImageBackgroundColor('white');
+                    if ($fitbyWidth) {
+                        $im->resizeImage($maxSize, 0, \Imagick::FILTER_LANCZOS, 1);
+                    } else {
+                        $im->resizeImage(0, $maxSize, \Imagick::FILTER_LANCZOS, 1);
+                    }
+                } else if ($fitbyWidth) {
+                    $im->thumbnailImage($maxSize, 0);
                 } else {
-                    $im->resizeImage(0, $maxSize, \Imagick::FILTER_LANCZOS, 1);
+                    $im->thumbnailImage(0, $maxSize);
                 }
 
                 $im->writeImage();
