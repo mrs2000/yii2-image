@@ -30,6 +30,7 @@ class ImageHandler extends \yii\base\Component
     public const IMG_GIF = 1;
     public const IMG_JPEG = 2;
     public const IMG_PNG = 3;
+    public const IMG_WEBP = 4;
 
     public const CORNER_LEFT_TOP = 1;
     public const CORNER_RIGHT_TOP = 2;
@@ -241,6 +242,12 @@ class ImageHandler extends \yii\base\Component
                         return $result;
                     }
                     throw new Exception('Invalid image png format');
+                    break;
+                case self::IMG_PNG:
+                    if ($result['image'] = imagecreatefromwebp($file)) {
+                        return $result;
+                    }
+                    throw new Exception('Invalid image webp format');
                     break;
                 default:
                     throw new Exception('Not supported image format');
@@ -819,6 +826,10 @@ class ImageHandler extends \yii\base\Component
                 header('Content-type: image/png');
                 imagepng($this->image);
                 break;
+            case self::IMG_WEBP:
+                header('Content-type: image/webp');
+                imagewebp($this->image);
+                break;
             default:
                 throw new Exception('Invalid image format for output');
         }
@@ -859,6 +870,11 @@ class ImageHandler extends \yii\base\Component
             case self::IMG_PNG:
                 if (!imagepng($this->image, $file)) {
                     throw new Exception('Can\'t save png file');
+                }
+                break;
+            case self::IMG_WEBP:
+                if (!imagewebp($this->image, $file)) {
+                    throw new Exception('Can\'t save webp file');
                 }
                 break;
             default:
