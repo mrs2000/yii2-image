@@ -840,11 +840,11 @@ class ImageHandler extends \yii\base\Component
     /**
      * @param bool $file
      * @param bool $toFormat
-     * @param int $jpegQuality
+     * @param int $quality
      * @return $this
      * @throws \yii\base\Exception
      */
-    public function save($file = false, $toFormat = false, $jpegQuality = 75)
+    public function save($file = false, $toFormat = false, $quality = 80)
     {
         if (empty($file)) {
             $file = $this->fileName;
@@ -863,7 +863,7 @@ class ImageHandler extends \yii\base\Component
                 }
                 break;
             case self::IMG_JPEG:
-                if (!imagejpeg($this->image, $file, $jpegQuality)) {
+                if (!imagejpeg($this->image, $file, $quality)) {
                     throw new Exception('Can\'t save jpeg file');
                 }
                 break;
@@ -873,7 +873,7 @@ class ImageHandler extends \yii\base\Component
                 }
                 break;
             case self::IMG_WEBP:
-                if (!imagewebp($this->image, $file)) {
+                if (!imagewebp($this->image, $file, $quality)) {
                     throw new Exception('Can\'t save webp file');
                 }
                 break;
