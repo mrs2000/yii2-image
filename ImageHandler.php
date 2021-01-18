@@ -110,7 +110,6 @@ class ImageHandler extends \yii\base\Component
      * @param $file_name
      * @param int $maxSize
      * @throws \yii\base\Exception
-     * @throws \ImagickException
      */
     public function resizeLarge(string $file_name, int $maxSize = 2000)
     {
@@ -132,14 +131,7 @@ class ImageHandler extends \yii\base\Component
         if ($width > $maxSize || $height > $maxSize) {
             try {
 
-                $fitbyWidth = ($maxSize / $width) > ($maxSize / $height);
-                $aspectRatio = $height / $width;
-                if ($fitbyWidth) {
-                    $im->setSize($maxSize, abs($width * $aspectRatio));
-                } else {
-                    $im->setSize(abs($height / $aspectRatio), $maxSize);
-                }
-
+                $fitbyWidth = ($maxSize / $width) < ($maxSize / $height);
                 $im->readImage($file_name);
 
                 if (defined('\Imagick::ALPHACHANNEL_FLATTEN')) {
@@ -211,7 +203,6 @@ class ImageHandler extends \yii\base\Component
      * @param string $file
      * @return array|null
      * @throws Exception
-     * @throws \ImagickException
      */
     private function loadImage(string $file)
     {
@@ -243,7 +234,7 @@ class ImageHandler extends \yii\base\Component
                     }
                     throw new Exception('Invalid image png format');
                     break;
-                case self::IMG_PNG:
+                case self::IMG_WEBP:
                     if ($result['image'] = imagecreatefromwebp($file)) {
                         return $result;
                     }
@@ -282,7 +273,6 @@ class ImageHandler extends \yii\base\Component
      * @param string $file
      * @return $this|bool
      * @throws \yii\base\Exception
-     * @throws \ImagickException
      */
     public function load(string $file): ?self
     {
@@ -488,7 +478,6 @@ class ImageHandler extends \yii\base\Component
      * @param bool $zoom
      * @return $this|bool
      * @throws \yii\base\Exception
-     * @throws \ImagickException
      */
     public function watermark(string $watermarkFile, int $offsetX, int $offsetY, $corner = self::CORNER_RIGHT_BOTTOM, $zoom = false): ?self
     {
