@@ -123,8 +123,8 @@ class ImageHandler extends \yii\base\Component
         $im = new \Imagick();
         try {
             $im->pingImage($file_name);
-        } catch (\ImagickException) {
-            throw new Exception('Invalid or corrupted image file, please try uploading another image.');
+        } catch (\ImagickException $e) {
+            throw new Exception('Invalid or corrupted image file, please try uploading another image: ' . $e->getMessage());
         }
 
         $width = $im->getImageWidth();
