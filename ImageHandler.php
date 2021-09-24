@@ -613,8 +613,8 @@ class ImageHandler extends \yii\base\Component
         $height = (int)$height;
 
         //Centered crop
-        $startX = $startX === false ? floor(($this->width - $width) / 2) : (int)$startX;
-        $startY = $startY === false ? floor(($this->height - $height) / 2) : (int)$startY;
+        $startX = $startX === null ? floor(($this->width - $width) / 2) : (int)$startX;
+        $startY = $startY === null ? floor(($this->height - $height) / 2) : (int)$startY;
 
         //Check dimensions
         $startX = max(0, min($this->width, $startX));
