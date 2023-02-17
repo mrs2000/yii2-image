@@ -50,25 +50,16 @@ class ImageHandler extends \yii\base\Component
         return $this->image;
     }
 
-    /**
-     * @return int
-     */
     public function getFormat(): int
     {
         return $this->format;
     }
 
-    /**
-     * @return int
-     */
     public function getWidth(): int
     {
         return $this->width;
     }
 
-    /**
-     * @return int
-     */
     public function getHeight(): int
     {
         return $this->height;
@@ -107,10 +98,6 @@ class ImageHandler extends \yii\base\Component
 
     /**
      * Resize very large image with Imagick
-     * @param string $file_name
-     * @param int $maxSize
-     * @throws Exception
-     * @throws \ImagickException
      */
     public function resizeLarge(string $file_name, int $maxSize = 2000)
     {
@@ -154,6 +141,9 @@ class ImageHandler extends \yii\base\Component
                 header('HTTP/1.1 500 Internal Server Error');
                 throw new Exception('An error occured reszing the image. ' . $e->getMessage());
             }
+        } else if ($im->getImageFormat() === 'PNG') {
+            $im->readImage($file_name);
+            $im->writeImage();
         }
 
         $im->destroy();
@@ -161,7 +151,6 @@ class ImageHandler extends \yii\base\Component
 
     /**
      * Flatten image
-     * @return $this
      */
     public function flatten(): self
     {
@@ -178,9 +167,7 @@ class ImageHandler extends \yii\base\Component
 
     /**
      * Optimize file
-     * @param string|null $filename
      * @param array $params ['-progressive', '-copy none', '-optimize']
-     * @return bool
      */
     public function optimize(string $filename = null, array $params = ['-copy none', '-optimize']): bool
     {
@@ -190,22 +177,12 @@ class ImageHandler extends \yii\base\Component
                 ['-copy none', '-optimize'];
         }
 
-        switch (pathinfo($filename, PATHINFO_EXTENSION)) {
-            case 'jpg':
-            case 'jpeg':
-                $optimizer = new OptimizeJpg();
-                return $optimizer->run($filename, $params);
-        }
-
-        return true;
+        return match (pathinfo($filename, PATHINFO_EXTENSION)) {
+            'jpg', 'jpeg' => (new OptimizeJpg())->run($filename, $params),
+            default => true,
+        };
     }
 
-    /**
-     * @param string $file
-     * @return array
-     * @throws Exception
-     * @throws \ImagickException
-     */
     private function loadImage(string $file): array
     {
         $result = [];
@@ -267,11 +244,6 @@ class ImageHandler extends \yii\base\Component
         imagecopy($this->image, $image['image'], 0, 0, 0, 0, $this->width, $this->height);
     }
 
-    /**
-     * @param string $file
-     * @return $this|bool
-     * @throws \yii\base\Exception|\ImagickException
-     */
     public function load(string $file): ?self
     {
         $this->freeImage();
@@ -285,10 +257,6 @@ class ImageHandler extends \yii\base\Component
         return null;
     }
 
-    /**
-     * @return $this
-     * @throws \yii\base\Exception
-     */
     public function reload(): self
     {
         $this->checkLoaded();
@@ -317,13 +285,6 @@ class ImageHandler extends \yii\base\Component
         }
     }
 
-    /**
-     * @param $toWidth
-     * @param $toHeight
-     * @param bool $proportional
-     * @return $this
-     * @throws \yii\base\Exception
-     */
     public function resize($toWidth, $toHeight, bool $proportional = true): self
     {
         $this->checkLoaded();
@@ -361,13 +322,6 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
-    /**
-     * @param $toWidth
-     * @param $toHeight
-     * @param bool $proportional
-     * @return $this
-     * @throws \yii\base\Exception
-     */
     public function thumb($toWidth, $toHeight, bool $proportional = true): self
     {
         $this->checkLoaded();
@@ -468,15 +422,6 @@ class ImageHandler extends \yii\base\Component
         return abs($filter[0] - $r2) + abs($filter[1] - $g2) + abs($filter[2] - $b2) <= $diff;
     }
 
-    /**
-     * @param string $watermarkFile
-     * @param int $offsetX
-     * @param int $offsetY
-     * @param int $corner
-     * @param bool $zoom
-     * @return $this|bool
-     * @throws Exception|\ImagickException
-     */
     public function watermark(string $watermarkFile, int $offsetX, int $offsetY, int $corner = self::CORNER_RIGHT_BOTTOM, bool $zoom = false): ?self
     {
         $this->checkLoaded();
@@ -498,30 +443,7 @@ class ImageHandler extends \yii\base\Component
                 }
             }
 
-            switch ($corner) {
-                case self::CORNER_LEFT_TOP:
-                    $posX = $offsetX;
-                    $posY = $offsetY;
-                    break;
-                case self::CORNER_RIGHT_TOP:
-                    $posX = $this->width - $watermarkWidth - $offsetX;
-                    $posY = $offsetY;
-                    break;
-                case self::CORNER_LEFT_BOTTOM:
-                    $posX = $offsetX;
-                    $posY = $this->height - $watermarkHeight - $offsetY;
-                    break;
-                case self::CORNER_RIGHT_BOTTOM:
-                    $posX = $this->width - $watermarkWidth - $offsetX;
-                    $posY = $this->height - $watermarkHeight - $offsetY;
-                    break;
-                case self::CORNER_CENTER:
-                    $posX = floor(($this->width - $watermarkWidth) / 2);
-                    $posY = floor(($this->height - $watermarkHeight) / 2);
-                    break;
-                default:
-                    throw new Exception('Invalid $corner value');
-            }
+            [$posX, $posY] = $this->getPositionByCorner($corner, $offsetX, $offsetY, $watermarkWidth, $watermarkHeight);
 
             imagecopyresampled($this->image, $wImg['image'], $posX, $posY, 0, 0, $watermarkWidth, $watermarkHeight, $wImg['width'], $wImg['height']);
             imagedestroy($wImg['image']);
@@ -613,8 +535,8 @@ class ImageHandler extends \yii\base\Component
         $height = (int)$height;
 
         //Centered crop
-        $startX = $startX === null ? floor(($this->width - $width) / 2) : (int)$startX;
-        $startY = $startY === null ? floor(($this->height - $height) / 2) : (int)$startY;
+        $startX = $startX ?? (int)floor(($this->width - $width) / 2);
+        $startY = $startY ?? (int)floor(($this->height - $height) / 2);
 
         //Check dimensions
         $startX = max(0, min($this->width, $startX));
@@ -660,31 +582,7 @@ class ImageHandler extends \yii\base\Component
 
         $color = imagecolorallocate($this->image, $color[0], $color[1], $color[2]);
 
-        switch ($corner) {
-            case self::CORNER_LEFT_TOP:
-                $posX = $offsetX;
-                $posY = $offsetY;
-                break;
-            case self::CORNER_RIGHT_TOP:
-                $posX = $this->width - $textWidth - $offsetX;
-                $posY = $offsetY;
-                break;
-            case self::CORNER_LEFT_BOTTOM:
-                $posX = $offsetX;
-                $posY = $this->height - $textHeight - $offsetY;
-                break;
-            case self::CORNER_RIGHT_BOTTOM:
-                $posX = $this->width - $textWidth - $offsetX;
-                $posY = $this->height - $textHeight - $offsetY;
-                break;
-            case self::CORNER_CENTER:
-                $posX = floor(($this->width - $textWidth) / 2);
-                $posY = floor(($this->height - $textHeight) / 2);
-                break;
-            default:
-                throw new Exception('Invalid $corner value');
-        }
-
+        [$posX, $posY] = $this->getPositionByCorner($corner, $offsetX, $offsetY, $textWidth, $textHeight);
 
         imagettftext($this->image, $size, $angle, $posX, $posY + $textHeight, $color, $fontFile, $text);
 
@@ -782,12 +680,6 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
-    /**
-     * @param bool $inFormat
-     * @param int $jpegQuality
-     * @return $this
-     * @throws \yii\base\Exception
-     */
     public function show(bool $inFormat = false, int $jpegQuality = 75): self
     {
         $this->checkLoaded();
@@ -820,14 +712,7 @@ class ImageHandler extends \yii\base\Component
         return $this;
     }
 
-    /**
-     * @param bool|string $file
-     * @param bool|string $toFormat
-     * @param int $quality
-     * @return $this
-     * @throws \yii\base\Exception
-     */
-    public function save($file = false, $toFormat = false, int $quality = 80): self
+    public function save(bool|string $file = false, bool|int $toFormat = false, int $quality = 80): self
     {
         if (empty($file)) {
             $file = $this->fileName;
@@ -865,5 +750,43 @@ class ImageHandler extends \yii\base\Component
         }
 
         return $this;
+    }
+
+    /**
+     * @param int $corner
+     * @param int $offsetX
+     * @param int $offsetY
+     * @param mixed $watermarkWidth
+     * @param mixed $watermarkHeight
+     * @return array
+     * @throws Exception
+     */
+    private function getPositionByCorner(int $corner, int $offsetX, int $offsetY, mixed $watermarkWidth, mixed $watermarkHeight): array
+    {
+        switch ($corner) {
+            case self::CORNER_LEFT_TOP:
+                $posX = $offsetX;
+                $posY = $offsetY;
+                break;
+            case self::CORNER_RIGHT_TOP:
+                $posX = $this->width - $watermarkWidth - $offsetX;
+                $posY = $offsetY;
+                break;
+            case self::CORNER_LEFT_BOTTOM:
+                $posX = $offsetX;
+                $posY = $this->height - $watermarkHeight - $offsetY;
+                break;
+            case self::CORNER_RIGHT_BOTTOM:
+                $posX = $this->width - $watermarkWidth - $offsetX;
+                $posY = $this->height - $watermarkHeight - $offsetY;
+                break;
+            case self::CORNER_CENTER:
+                $posX = floor(($this->width - $watermarkWidth) / 2);
+                $posY = floor(($this->height - $watermarkHeight) / 2);
+                break;
+            default:
+                throw new Exception('Invalid $corner value');
+        }
+        return array($posX, $posY);
     }
 }
