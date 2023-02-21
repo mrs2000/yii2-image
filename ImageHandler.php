@@ -99,17 +99,17 @@ class ImageHandler extends \yii\base\Component
     /**
      * Resize very large image with Imagick
      */
-    public function resizeLarge(string $file_name, int $maxSize = 2000)
+    public function resizeLarge(string $fileName, int $maxSize = 2000)
     {
         if (!extension_loaded('imagick')) {
             return;
         }
 
-        $file_name = realpath($file_name);
+        $fileName = realpath($fileName);
 
         $im = new \Imagick();
         try {
-            $im->pingImage($file_name);
+            $im->pingImage($fileName);
         } catch (\ImagickException $e) {
             throw new Exception('Invalid or corrupted image file, please try uploading another image: ' . $e->getMessage());
         }
@@ -120,7 +120,7 @@ class ImageHandler extends \yii\base\Component
             try {
 
                 $fitbyWidth = ($maxSize / $width) < ($maxSize / $height);
-                $im->readImage($file_name);
+                $im->readImage($fileName);
 
                 if (defined('\Imagick::ALPHACHANNEL_FLATTEN')) {
                     $im->setImageAlphaChannel(\Imagick::ALPHACHANNEL_FLATTEN);
@@ -141,8 +141,8 @@ class ImageHandler extends \yii\base\Component
                 header('HTTP/1.1 500 Internal Server Error');
                 throw new Exception('An error occured reszing the image. ' . $e->getMessage());
             }
-        } else if ($im->getImageFormat() === 'PNG') {
-            $im->readImage($file_name);
+        } else if (filemtime($fileName) > time() - 300 && $im->getImageFormat() === 'PNG') {
+            $im->readImage($fileName);
             $im->writeImage();
         }
 
