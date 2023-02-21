@@ -141,7 +141,7 @@ class ImageHandler extends \yii\base\Component
                 header('HTTP/1.1 500 Internal Server Error');
                 throw new Exception('An error occured reszing the image. ' . $e->getMessage());
             }
-        } else if (filemtime($fileName) > time() - 300 && $im->getImageFormat() === 'PNG') {
+        } else if (is_writable($fileName) && $im->getImageFormat() === 'PNG') {
             $im->readImage($fileName);
             $im->writeImage();
         }
