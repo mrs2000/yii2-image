@@ -187,8 +187,6 @@ class ImageHandler extends \yii\base\Component
     {
         $result = [];
 
-        $this->resizeLarge($file);
-
         if ($imageInfo = @getimagesize($file)) {
             [$result['width'], $result['height']] = $imageInfo;
 
@@ -247,6 +245,8 @@ class ImageHandler extends \yii\base\Component
     public function load(string $file): ?self
     {
         $this->freeImage();
+
+        $this->resizeLarge($file);
 
         if ($this->originalImage = $this->loadImage($file)) {
             $this->initImage();
