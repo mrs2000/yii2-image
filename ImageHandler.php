@@ -422,7 +422,7 @@ class ImageHandler extends \yii\base\Component
         return abs($filter[0] - $r2) + abs($filter[1] - $g2) + abs($filter[2] - $b2) <= $diff;
     }
 
-    public function watermark(string $watermarkFile, int $offsetX, int $offsetY, int $corner = self::CORNER_RIGHT_BOTTOM, bool $zoom = false): ?self
+    public function watermark(string $watermarkFile, int $offsetX, int $offsetY, int $corner = self::CORNER_RIGHT_BOTTOM, bool|float $zoom = false): ?self
     {
         $this->checkLoaded();
 
